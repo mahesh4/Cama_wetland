@@ -631,9 +631,9 @@ class CamaConvert:
                 result["message"] = message
             elif p_request_json["request"] == "cama_run_post":
                 result = dict()
-                message = self.run_cama_post(p_request_json["start_year"], p_request_json["end_year"], p_request_json["p_lat"],
-                                             p_request_json["p_lon"], p_request_json["p_riv_base"], p_request_json["p_riv_new"],
-                                             p_request_json["p_fld_base"], p_request_json["p_fld_new"], p_request_json["size_wetland"],
+                message = self.run_cama_post(p_request_json["start_year"], p_request_json["end_year"], p_request_json["lat"],
+                                             p_request_json["lon"], p_request_json["riv_base"], p_request_json["riv_new"],
+                                             p_request_json["fld_base"], p_request_json["fld_new"], p_request_json["size_wetland"],
                                              p_request_json["folder_name"])
                 result["message"] = message
             elif p_request_json["request"] == "remove_output_folder":
