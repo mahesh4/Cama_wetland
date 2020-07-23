@@ -308,16 +308,19 @@ fi
 
 done # loop to next year simulation
 
-# reset inp in cama
-echo "Resetting inp directory in Cama"
-sudo rm -r ${CAMADIR}/inp/hamid
-sudo cp -avr ${CAMADIR}/inp/hamid_copy ${CAMADIR}/inp/hamid
-sudo chmod -R 705 ${CAMADIR}/inp/hamid
+##################
+# reset map/hamid in cama
+echo "Resetting map/hamid directory in Cama"
+sudo rm -r ${CAMADIR}/map/hamid
+sudo cp -avr ${CAMADIR}/map/hamid_copy ${CAMADIR}/map/hamid
+sudo chmod -R 705 ${CAMADIR}/map/hamid
 
 # starting the subprocess to store the results to dropbox
+echo "Uploading output to Dropbox"
 python ${APIDIR}/dropbox_connect.py
 
-echo "Deleting any previous generated output in machine"
-rm -rf ${CAMADIR}/out/*
+# remove the old outputs from output folder
+echo "Deleting the output generated in the server"
+rm -rf ${BASE}/out/*
 
 exit 0
