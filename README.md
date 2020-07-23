@@ -1,7 +1,7 @@
 # Cama
 
 ## Documentation ##
-https://documenter.getpostman.com/view/4504366/T1DngcuP?version=latest 
+https://documenter.getpostman.com/view/4504366/Szf6Y8oi?version=latest
 
 ## Requirements ##
 Ubuntu Server
