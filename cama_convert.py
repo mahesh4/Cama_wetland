@@ -108,37 +108,67 @@ class CamaConvert:
         else:
             return None  # not a recognized type of vegetation
 
-    def update_groundwater(self, day1, month1, year1, day2, month2, year2, wetland_loc_multiple, flow_value):
-        file_path = os.path.join(self.BASE_PATH, "map", "hamid", "lonlat_vic_op_cmf_ip")
-        lon_lat = numpy.loadtxt(file_path)
-        file_path = os.path.join(self.BASE_PATH, "inp", "hamid_dates_1915_2011")
-        dates = numpy.loadtxt(file_path, dtype=numpy.int32)
-        min_lonlat_index_list = []
-        # Finding nearest lon_lat to the wetland location
-        for wetland_loc in wetland_loc_multiple:
-            distance = [self.pos2dis(wetland_loc[0], wetland_loc[1], location[1], location[0]) for location in lon_lat]
-            nearest_lon_lat_index = distance.index(min(distance))
-            min_lonlat_index_list.append(nearest_lon_lat_index)
+    def update_manning(self, p_lat, p_lon, p_riv_base, p_riv_new, p_fld_base, p_fld_new, size_wetland):
+        cell = self.coord_to_grid_cell(p_lat, p_lon) - 1  # must offset by 1; this is very sensitive in the raw binary
+        # 1) we pull the number of indices from the river height file
+        file_path = os.path.join(self.BASE_PATH, "map", "hamid", "rivhgt.bin")
+        file = open(file_path, "r")
+        index_count = len(numpy.fromfile(file, dtype=numpy.float32))
+        file.close()
+        # 2) we set all the values to a new base value
+        new_riv = numpy.full((index_count, 1), p_riv_base, dtype=numpy.float32)
+        # 3) set the specific grid cell to a value double the baseline (?)
+        new_riv[cell] = p_riv_new
+        # 4) save that to the 'river manning' file
+        file_path = os.path.join(self.BASE_PATH, "map", "hamid", "rivman.bin")
+        new_riv.tofile(file_path)
+        # 5) set all values to a different, new base value
+        new_fld = numpy.full((index_count, 1), p_fld_base, dtype=numpy.float32)
+        # 6) set the specific grid cell to yet another specified manning coefficient
+        new_fld[cell] = p_fld_new
+        # 7) save that as the 'floodplain manning' file
+        file_path = os.path.join(self.BASE_PATH, "map", "hamid", "fldman.bin")
+        new_fld.tofile(file_path)
+        # 8) update the fldhgt.bin
+        file_path = os.path.join(self.BASE_PATH, "map", "hamid", "lonlat")
+        lon_lat_1 = numpy.loadtxt(file_path, usecols=range(2))
+        lon_lat = lon_lat_1
 
-        dates_start_idx = numpy.where((dates[:, 0] == year1) & (dates[:, 1] == month1) & (dates[:, 2] == day1))
-        dates_end_idx = numpy.where((dates[:, 0] == year2) & (dates[:, 1] == month2) & (dates[:, 2] == day2))
-        dates_in_range = dates[dates_start_idx[0][0]: dates_end_idx[0][0] + 1]
-        flow = flow_value / len(dates_in_range)
-        for cur_date in dates_in_range:
-            file_name = "Roff___" + "".join(map(lambda x: str(x).zfill(2), cur_date)) + ".bin"
-            file_path = os.path.join(self.BASE_PATH, "inp", "hamid", file_name)
-            with open(file_path, "r") as f:
-                flood_input = numpy.fromfile(f, dtype=numpy.float32)
-                f.close()
+        for i in range(9):
+            lon_lat = numpy.vstack([lon_lat_1, lon_lat])
 
-            for min_lonlat_index in min_lonlat_index_list:
-                flood_input[min_lonlat_index] += flow * 0.0256
+        file_path = os.path.join(self.BASE_PATH, "map", "hamid", "fldhgt_original.bin")
+        file = open(file_path, "r")
+        fldhgt_original = numpy.fromfile(file, dtype=numpy.float32)
+        file.close()
 
-            with open(file_path, "w") as f:
-                flood_input.tofile(f)
-                f.close()
+        lon_lat = numpy.insert(lon_lat, 2, fldhgt_original[0: lon_lat.shape[0]], axis=1)
+        lon_lat_4 = lon_lat
 
-            print("flow updated for ", file_name)
+        file_path = os.path.join(self.BASE_PATH, "map", "hamid", "wetland_loc_multiple")
+        lon_lat_5 = numpy.loadtxt(file_path, usecols=range(2))
+
+        for k in range(3, 4):
+            lon_5 = lon_lat_5[k, 1]
+            lat_5 = lon_lat_5[k, 0]
+
+            lon_lat_2 = lon_lat_1[:, 0:2]
+            lon_lat_2 = numpy.insert(lon_lat_2, 2, 0, axis=1)
+
+            for j in range(0, lon_lat_2.shape[0]):
+                lon = lon_lat_2[j, 0]
+                lat = lon_lat_2[j, 1]
+                lon_lat_2[j, 2] = self.pos2dis(lat_5, lon_5, lat, lon)
+
+            lon_lat_3 = lon_lat_2[lon_lat_2[:, 2].argsort()]
+
+            location = numpy.where((lon_lat[:, 0] == lon_lat_3[0, 0]) & (lon_lat[:, 1] == lon_lat_3[0, 1]))
+            lon_lat_4[location[0: size_wetland + 1], 2] = lon_lat[location[0: size_wetland + 1], 2] - 1.5
+
+        file_path = os.path.join(self.BASE_PATH, "map", "hamid", "fldhgt.bin")
+        with open(file_path, "w") as fp:
+            lon_lat_4[:, 2].astype("float32").tofile(fp)
+            fp.close()
 
     def delta_max_q_y(self, p_cell=0):
         if not str(self.YEAR).isdigit():
@@ -420,7 +450,6 @@ class CamaConvert:
         return min_year
 
     def run_cama_pre(self, s_year, e_year, folder_name):
-        # expects cama to be pre-configured
         try:
             folder_collection = self.MONGO_CLIENT["output"]["folder"]
             # Check if there is no existing model running
@@ -448,7 +477,7 @@ class CamaConvert:
             raise e
         return "Execution queued"
 
-    def run_cama_post(self, start_day, start_month, start_year, end_day, end_month, end_year, wetland_loc_multiple, flow_value, folder_name):
+    def run_cama_post(self, start_year, end_year, p_lat, p_lon, p_riv_base, p_riv_new, p_fld_base, p_fld_new, size_wetland, folder_name):
         try:
             folder_collection = self.MONGO_CLIENT["output"]["folder"]
             # Check if there is no existing model running
@@ -459,18 +488,18 @@ class CamaConvert:
             # Check if there exist no such document with the folder_name in the DB and in dropbox
             folder = folder_collection.find_one({"folder_name": folder_name})
             if folder is None and not self.DROPBOX.folder_exists(folder_name):
-                metadata = {"start_day": start_day, "start_month": start_month, "start_year": start_year, "end_day": end_day, "end_month": end_month,
-                            "end_year": end_year, "flow_value": flow_value, "wetland_loc_multiple": wetland_loc_multiple}
+                metadata = {"p_lat": p_lat, "p_lon": p_lon, "p_riv_base": p_riv_base, "p_riv_new": p_riv_new, "p_fld_base": p_fld_base,
+                            "p_fld_new": p_fld_new, "size_wetland": size_wetland, "start_year": start_year, "end_year": end_year}
                 new_folder = dict({"model": "postflow", "status": "running", "folder_name": folder_name, "metadata": metadata})
                 # Creating the folder in dropbox, and in database
                 folder_collection.insert_one(new_folder)
                 self.DROPBOX.create_folder(folder_name)
 
                 # Config the Cama to run from s_year to e_year
-                self.config_cama("post", start_year - 1, end_year)
+                self.config_cama("post", start_year, end_year)
 
-                # Update the groundwater in the input
-                self.update_groundwater(start_day, start_month, start_year, end_day, end_month, end_year, wetland_loc_multiple, flow_value)
+                # Update the wetland in the map
+                self.update_manning(p_lat, p_lon, p_riv_base, p_riv_new, p_fld_base, p_fld_new, size_wetland)
 
                 # Starting the execution of the model
                 subprocess.Popen("sudo " + self.BASE_PATH + "/gosh/hamid_post.sh", shell=True)
@@ -592,11 +621,6 @@ class CamaConvert:
                 result = self.veg_to_manning(p_request_json["veg_type"])
             elif p_request_json["request"] == "coord_to_grid":
                 result = self.coord_to_grid_cell(p_request_json["lat"], p_request_json["lon"])
-            elif p_request_json["request"] == "update_manning":
-                result = dict()
-                self.update_manning(p_request_json["lat"], p_request_json["lon"], p_request_json["riv_pre"], p_request_json["riv_post"],
-                                    p_request_json["fld_pre"], p_request_json["fld_post"], p_request_json["size_wetland"])
-                result["succeeded"] = True
             elif p_request_json["request"] == "cama_status":
                 result = dict()
                 message = self.cama_status(p_request_json["folder_name"])
@@ -607,9 +631,10 @@ class CamaConvert:
                 result["message"] = message
             elif p_request_json["request"] == "cama_run_post":
                 result = dict()
-                message = self.run_cama_post(p_request_json["start_day"], p_request_json["start_month"], p_request_json["start_year"],
-                                             p_request_json["end_day"], p_request_json["end_month"], p_request_json["end_year"],
-                                             p_request_json["wetland_loc_multiple"], p_request_json["flow_value"], p_request_json["folder_name"])
+                message = self.run_cama_post(p_request_json["start_year"], p_request_json["end_year"], p_request_json["p_lat"],
+                                             p_request_json["p_lon"], p_request_json["p_riv_base"], p_request_json["p_riv_new"],
+                                             p_request_json["p_fld_base"], p_request_json["p_fld_new"], p_request_json["size_wetland"],
+                                             p_request_json["folder_name"])
                 result["message"] = message
             elif p_request_json["request"] == "remove_output_folder":
                 result = dict()

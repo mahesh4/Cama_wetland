@@ -198,10 +198,8 @@ def came_run_post():
         mongo_client = get_db()
         cama = CamaConvert(mongo_client)
         request_data = request.get_json()
-        mandatory_keys = ["folder_name", "start_day", "end_day", "start_month", "end_month", "start_year",  "end_year", "flow_value",
-                          "wetland_loc_multiple"]
-        numeric_keys = ["start_day", "end_day", "start_month", "end_month", "start_year",  "end_year", "flow_value"]
-        wetland_loc_multiple_list = request_data["wetland_loc_multiple"]
+        mandatory_keys = ["lat", "lon", "riv_pre", "riv_post", "fld_pre", "fld_post", "size_wetland", "start_year", "end_year", "folder_name"]
+        numeric_keys = ["lat", "lon", "riv_pre", "riv_post", "fld_pre",  "fld_post", "size_wetland"]
         given_keys = request_data.keys()
         for this_key in mandatory_keys:
             if this_key not in given_keys:
@@ -210,11 +208,6 @@ def came_run_post():
         for this_key in numeric_keys:
             if not cama.is_number(request_data[this_key]):
                 abort(400, "Expected number, received: " + this_key + "=" + request[this_key])
-
-        for wetland_loc in wetland_loc_multiple_list:
-            for loc in wetland_loc:
-                if not cama.is_number(loc):
-                    abort(400, "Expected number, received: wetland_loc_multiple=" + request_data["wetland_loc_multiple"])
 
         request_data["request"] = "cama_run_post"
         response = cama.do_request(request_data)
@@ -265,20 +258,6 @@ def peak_flow():
                 abort(400, "Expected number, received: " + this_key + "=" + request_data[this_key])
 
         request_data["request"] = "peak_flow"
-        response = cama.do_request(request_data)
-        return response
-    except Exception as e:
-        abort(500, e)
-
-
-@app.route("/get_flow", methods=["POST"])
-def get_flow():
-    # TODO: Work in progress
-    try:
-        mongo_client = get_db()
-        cama = CamaConvert(mongo_client)
-        request_data = request.get_json()
-        request_data["request"] = "get_flow"
         response = cama.do_request(request_data)
         return response
     except Exception as e:

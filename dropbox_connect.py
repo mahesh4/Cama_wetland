@@ -74,6 +74,21 @@ class DropBox:
         except Exception as e:
             raise e
 
+    def recover(self):
+        try:
+            self.DB.connect_db()
+            mongo_client = self.DB.get_connection()
+            folder_collection = mongo_client["output"]["folder"]
+            folder = folder_collection.find_one({"status": "running"})
+            if folder is not None:
+                folder_collection.update({"_id": folder["_id"]}, {"status": "error"})
+            if self.folder_exists(folder["folder_name"]):
+                self.delete_folder(folder["folder_name"])
+        except Exception as e:
+            raise e
+        finally:
+            self.DB.disconnect_db()
+
     def delete_folder(self, folder_name):
         try:
             path = "/" + folder_name
@@ -83,5 +98,10 @@ class DropBox:
 
 
 if __name__ == "__main__":
-    dropbox_obj = DropBox()
-    dropbox_obj.upload_output()
+    dropbox_obj = None
+    try:
+        dropbox_obj = DropBox()
+        dropbox_obj.upload_output()
+    except Exception as e:
+        if dropbox_obj is not None:
+            dropbox_obj.recover()
