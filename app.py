@@ -198,8 +198,8 @@ def came_run_post():
         mongo_client = get_db()
         cama = CamaConvert(mongo_client)
         request_data = request.get_json()
-        mandatory_keys = ["lat", "lon", "riv_pre", "riv_post", "fld_pre", "fld_post", "size_wetland", "start_year", "end_year", "folder_name"]
-        numeric_keys = ["lat", "lon", "riv_pre", "riv_post", "fld_pre",  "fld_post", "size_wetland"]
+        mandatory_keys = ["lat", "lon", "riv_base", "riv_new", "fld_base", "fld_new", "size_wetland", "start_year", "end_year", "folder_name"]
+        numeric_keys = ["lat", "lon", "riv_base", "riv_new", "fld_base",  "fld_new", "size_wetland"]
         given_keys = request_data.keys()
         for this_key in mandatory_keys:
             if this_key not in given_keys:
