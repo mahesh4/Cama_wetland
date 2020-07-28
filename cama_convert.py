@@ -29,7 +29,7 @@ class CamaConvert:
         self.LON = 0
         self.LAT_MAT = [0]
         self.LON_MAT = [0]
-        self.temp_folder = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        self.temp_folder = ''.join(random.sample(string.ascii_uppercase + string.digits, k=10))
 
     def pos2dis(self, lat1, lon1, lat2, lon2):
         # approximate radius of earth in km
