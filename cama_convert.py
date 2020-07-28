@@ -424,7 +424,7 @@ class CamaConvert:
 
         # for each year in the range
         year_peaks = [0] * 97
-        for i in range(1916, 2012):
+        for i in range(1916, 2011):
             # Downloading the file from dropbox
             self.DROPBOX.download_file(folder_name, "outflw" + str(i) + ".bin")
             output_file = os.path.join(os.getcwd(), "temp", folder_name, "outflw" + str(i) + ".bin")

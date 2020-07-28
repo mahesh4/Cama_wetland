@@ -234,7 +234,7 @@ def coord_to_grid():
                 abort(400, "Expected number, received: " + this_key + "=" + request_data[this_key])
 
         request_data["request"] = "coord_to_grid"
-        response = CamaConvert.do_request(request_data, mongo_client)
+        response = cama.do_request(request_data)
         return response
     except Exception as e:
         abort(500, e)
