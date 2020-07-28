@@ -29,7 +29,7 @@ class CamaConvert:
         self.LON = 0
         self.LAT_MAT = [0]
         self.LON_MAT = [0]
-        self.temp_folder = ''.join(random.sample(string.ascii_uppercase + string.digits, k=10))
+        self.TMP_FOLDER = ''.join(random.sample(string.ascii_uppercase + string.digits, k=10))
 
     def pos2dis(self, lat1, lon1, lat2, lon2):
         # approximate radius of earth in km
@@ -57,7 +57,7 @@ class CamaConvert:
             return False
 
     def set_configuration(self, new_config):
-        TMP_DIR = os.path.join(os.getcwd(), self.temp_folder)
+        TMP_DIR = os.path.join(os.getcwd(), self.TMP_FOLDER)
 
         if not os.path.exists(TMP_DIR):
             os.makedirs(TMP_DIR)
@@ -67,14 +67,14 @@ class CamaConvert:
             path = new_config["pre_path"].split("/")
             folder_name = path[1]
             file_name = path[2]
-            self.DROPBOX.download_file(folder_name, file_name, self.temp_folder)
-            self.PRE_PATH = os.path.join(os.getcwd(), self.temp_folder, folder_name, file_name)
+            self.DROPBOX.download_file(folder_name, file_name, self.TMP_FOLDER)
+            self.PRE_PATH = os.path.join(os.getcwd(), self.TMP_FOLDER, folder_name, file_name)
         if "post_path" in new_config:
             path = new_config["post_path"].split("/")
             folder_name = path[1]
             file_name = path[2]
-            self.DROPBOX.download_file(folder_name, file_name, self.temp_folder)
-            self.POST_PATH = os.path.join(os.getcwd(), self.temp_folder, folder_name, file_name)
+            self.DROPBOX.download_file(folder_name, file_name, self.TMP_FOLDER)
+            self.POST_PATH = os.path.join(os.getcwd(), self.TMP_FOLDER, folder_name, file_name)
         if "lat" in new_config:
             self.LAT = new_config["lat"]
         if "lon" in new_config:
@@ -430,8 +430,8 @@ class CamaConvert:
         year_peaks = [0] * 97
         for i in range(1916, 2011):
             # Downloading the file from dropbox
-            self.DROPBOX.download_file(folder_name, "outflw" + str(i) + ".bin", self.temp_folder)
-            output_file = os.path.join(os.getcwd(), self.temp_folder, folder_name, "outflw" + str(i) + ".bin")
+            self.DROPBOX.download_file(folder_name, "outflw" + str(i) + ".bin", self.TMP_FOLDER)
+            output_file = os.path.join(os.getcwd(), self.TMP_FOLDER, folder_name, "outflw" + str(i) + ".bin")
             year_flow = self.map_input_to_flow(output_file, grid_cell, i, False)
             year_peaks[i - 1916] = max(year_flow)
 
@@ -515,7 +515,7 @@ class CamaConvert:
 
     def clean_up(self):
         """Deleting all content of the temp folder"""
-        directory = os.path.join(os.getcwd(), self.temp_folder)
+        directory = os.path.join(os.getcwd(), self.TMP_FOLDER)
         if os.path.exists(directory) and os.path.isdir(directory):
             shutil.rmtree(directory)
 
