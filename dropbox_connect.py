@@ -59,17 +59,17 @@ class DropBox:
         except Exception as e:
             return False
 
-    def download_file(self, folder_name, file_name):
+    def download_file(self, folder_name, file_name, download_folder_name):
         try:
             file_path = "/" + folder_name + "/" + file_name
-            temp_dir = os.path.join(os.getcwd(), "temp")
-            if not os.path.exists(temp_dir):
-                os.makedirs(temp_dir)
+            download_dir = os.path.join(os.getcwd(), download_folder_name)
+            if not os.path.exists(download_dir):
+                os.makedirs(download_dir)
 
-            if not os.path.exists(os.path.join(os.getcwd(), "temp", folder_name)):
-                os.mkdir(os.path.join(os.getcwd(), "temp", folder_name))
+            if not os.path.exists(os.path.join(os.getcwd(), download_folder_name, folder_name)):
+                os.mkdir(os.path.join(os.getcwd(), download_folder_name, folder_name))
 
-            self.DBX.files_download_to_file(os.path.join(os.getcwd(), "temp", folder_name, file_name), file_path)
+            self.DBX.files_download_to_file(os.path.join(os.getcwd(), download_folder_name, folder_name, file_name), file_path)
             print("downloaded ", file_name)
         except Exception as e:
             raise e
