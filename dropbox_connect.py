@@ -19,13 +19,15 @@ class DropBox:
 
     def create_folder(self, folder_name):
         try:
-            # Inserting the folder into Dropbox
+            # Creating the folder into Dropbox
             folder = "/" + folder_name
             self.DBX.files_create_folder_v2(folder, autorename=False)
         except Exception as e:
             raise e
 
     def upload_output(self):
+        folder_collection = None
+        folder = None
         try:
             self.DB.connect_db()
             mongo_client = self.DB.get_connection()
@@ -33,7 +35,7 @@ class DropBox:
             output_path = os.path.join(self.BASE_PATH, "out", "hamid")
             folder = folder_collection.find_one({"status": "running"})
             if folder is None:
-                raise Exception("Record doesn't exist")
+                raise Exception("No Record in execution in Database")
             if not self.folder_exists(folder["folder_name"]):
                 raise Exception("Folder doesn't exist in dropbox")
             # Uploading the results
@@ -42,9 +44,11 @@ class DropBox:
                 with open(filename, 'rb') as fp:
                     self.DBX.files_upload(fp.read(), folder_name + "/" + filename.split("/")[-1], mode=WriteMode("overwrite"))
                     fp.close()
-            # updating database to set status to completed
+            # End of loop
             folder_collection.update({"_id": folder["_id"]}, {"$set": {"status": "completed"}})
         except Exception as e:
+            if folder_collection is not None and folder is not None:
+                folder_collection.update({"_id": folder["_id"]}, {"$set": {"status": "error"}})
             raise e
         finally:
             self.DB.disconnect_db()

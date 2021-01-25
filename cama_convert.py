@@ -113,6 +113,13 @@ class CamaConvert:
             return None  # not a recognized type of vegetation
 
     def update_manning(self, p_lat, p_lon, p_riv_base, p_riv_new, p_fld_base, p_fld_new, size_wetland):
+
+        # Check if map/hamid folder had been duplicated
+        if not os.path.exists(os.path.join(self.BASE_PATH, "map", "hamid_copy")):
+            command = "sudo cp -avr ${CAMADIR}/map/hamid ${CAMADIR}/map/hamid_copy".replace("{CAMADIR}", self.BASE_PATH)
+            process = subprocess.Popen(command, shell=True)
+            process.wait()
+            
         cell = self.coord_to_grid_cell(p_lat, p_lon) - 1  # must offset by 1; this is very sensitive in the raw binary
         # 1) we pull the number of indices from the river height file
         file_path = os.path.join(self.BASE_PATH, "map", "hamid", "rivhgt.bin")
@@ -481,36 +488,62 @@ class CamaConvert:
             raise e
         return "Execution queued"
 
+    def reset_map_directory(self):
+        command = "sudo rm -r ${CAMADIR}/map/hamid; sudo cp -avr ${CAMADIR}/map/hamid_copy ${CAMADIR}/map/hamid; " \
+                  "sudo chmod -R 705 ${CAMADIR}/map/hamid".replace("{CAMADIR}", self.BASE_PATH)
+        process = subprocess.Popen(command, shell=True)
+        process.wait()
+        return
+
+    def handle_cama_exception(self, folder_name):
+        try:
+            folder_collection = self.MONGO_CLIENT["output"]["folder"]
+            folder_collection.delete_one({"folder_name": folder_name})
+            self.DROPBOX.delete_folder(folder_name)
+
+        except Exception as e:
+            raise e
+
     def run_cama_post(self, start_year, end_year, p_lat, p_lon, p_riv_base, p_riv_new, p_fld_base, p_fld_new, size_wetland, folder_name):
         try:
             folder_collection = self.MONGO_CLIENT["output"]["folder"]
-            # Check if there is no existing model running
-            folder_list = list(folder_collection.find({"status": "running"}))
-            if len(folder_list) > 0:
-                return "there is model in execution, pls retry after sometime"
+            # Check if the model is in execution
+            running_record = folder_collection.find_one({"status": "running"})
+            if running_record is not None:
+                return "Model is in execution, please retry after sometime"
 
-            # Check if there exist no such document with the folder_name in the DB and in dropbox
-            folder = folder_collection.find_one({"folder_name": folder_name})
-            if folder is None and not self.DROPBOX.folder_exists(folder_name):
-                metadata = {"p_lat": p_lat, "p_lon": p_lon, "p_riv_base": p_riv_base, "p_riv_new": p_riv_new, "p_fld_base": p_fld_base,
-                            "p_fld_new": p_fld_new, "size_wetland": size_wetland, "start_year": start_year, "end_year": end_year}
-                new_folder = dict({"model": "postflow", "status": "running", "folder_name": folder_name, "metadata": metadata})
-                # Creating the folder in dropbox, and in database
-                folder_collection.insert_one(new_folder)
-                self.DROPBOX.create_folder(folder_name)
+            # Check if the folder_name is unique
+            if folder_name is not None:
+                record = folder_collection.find_one({"folder_name": folder_name})
+                if record is not None:
+                    raise Exception("folder_name is not unique. There exist a record with same folder_name")
 
-                # Config the Cama to run from s_year to e_year
-                self.config_cama("post", start_year, end_year)
+            metadata = {"p_lat": p_lat, "p_lon": p_lon, "p_riv_base": p_riv_base, "p_riv_new": p_riv_new, "p_fld_base": p_fld_base,
+                        "p_fld_new": p_fld_new, "size_wetland": size_wetland, "start_year": start_year, "end_year": end_year}
+            # Inserting the record in MongoDB
+            new_record = dict({"model": "postflow", "status": "running", "metadata": metadata})
 
-                # Update the wetland in the map
-                self.update_manning(p_lat, p_lon, p_riv_base, p_riv_new, p_fld_base, p_fld_new, size_wetland)
+            record_id = folder_collection.insert_one(new_record).inserted_id
+            # Use record_id as the folder_name if its None
+            if folder_name is None:
+                folder_name = str(record_id)
 
-                # Starting the execution of the model
-                subprocess.Popen("sudo " + self.BASE_PATH + "/gosh/hamid_post.sh", shell=True)
-            else:
-                raise Exception("folder name already exists")
+            # Updating the folder_name of the new_record
+            folder_collection.update({"_id": record_id}, {"$set": {"folder_name": folder_name}})
+            # Creating the folder for the record in Dropbox
+            self.DROPBOX.create_folder(folder_name)
+            # Config the Cama to run from s_year to e_year
+            self.config_cama("post", start_year, end_year)
+            # Update the wetland in the map
+            self.update_manning(p_lat, p_lon, p_riv_base, p_riv_new, p_fld_base, p_fld_new, size_wetland)
+            # Starting the execution of the model
+            subprocess.Popen("sudo " + self.BASE_PATH + "/gosh/hamid_post.sh", shell=True)
+
         except Exception as e:
+            self.handle_cama_exception(folder_name)
+            self.reset_map_directory()
             raise e
+
         return "Execution queued"
 
     def clean_up(self):
