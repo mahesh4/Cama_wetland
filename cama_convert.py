@@ -464,27 +464,32 @@ class CamaConvert:
         try:
             folder_collection = self.MONGO_CLIENT["output"]["folder"]
             # Check if there is no existing model running
-            folder_list = list(folder_collection.find({"status": "running"}))
-            if len(folder_list) > 0:
-                return "there is model in execution, pls retry after sometime"
-
+            running_record = folder_collection.find_one({"status": "running"})
+            if running_record is not None:
+                return "Model is in execution, please retry after sometime"
             # Check if there exist no such document with the folder_name in the DB and in dropbox
-            folder = folder_collection.find_one({"folder_name": folder_name})
-            if folder is None and not self.DROPBOX.folder_exists(folder_name):
-                metadata = {"start_year": s_year, "end_year": e_year}
-                new_file = dict({"model": "preflow", "status": "running", "folder_name": folder_name, "metadata": metadata})
-                # Creating the folder in dropbox, and in database
-                folder_collection.insert_one(new_file)
-                self.DROPBOX.create_folder(folder_name)
+            record = folder_collection.find_one({"folder_name": folder_name})
+            if record is not None:
+                raise Exception("folder_name is not unique. There exist a record with same folder_name")
 
-                # Config the Cama to run from s_year to e_year
-                self.config_cama("pre", s_year, e_year)
+            metadata = {"start_year": s_year, "end_year": e_year}
+            new_record = dict({"model": "preflow", "status": "running", "folder_name": folder_name, "metadata": metadata})
+            # Use record_id as the folder_name if its None
+            record_id = folder_collection.insert_one(new_record).inserted_id
+            # Inserting the record in MongoDB
+            if folder_name is None:
+                folder_name = str(record_id)
 
-                # Starting the execution of the model
-                subprocess.Popen("sudo " + self.BASE_PATH + "/gosh/hamid_pre.sh", shell=True)
-            else:
-                raise Exception("folder name already exists")
+            # Updating the folder_name of the new_record
+            folder_collection.update({"_id": record_id}, {"$set": {"folder_name": folder_name}})
+            # Creating a folder for the record in Dropbox
+            self.DROPBOX.create_folder(folder_name)
+            # Config the cama to run from s_year to e_year
+            self.config_cama("pre", s_year, e_year)
+            # Starting the execution of the model
+            subprocess.Popen("sudo " + self.BASE_PATH + "/gosh/hamid_pre.sh", shell=True)
         except Exception as e:
+            self.handle_cama_exception(folder_name, )
             raise e
         return "Execution queued"
 

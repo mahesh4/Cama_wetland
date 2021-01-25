@@ -1,7 +1,7 @@
 {
-  "MONGO_IP": "129.114.26.230",
-  "SSH_KEYFILE": "~/.ssh/Cama.pem",
-  "SSH_USERNAME": "cc",
+  "MONGO_IP": "",
+  "SSH_KEYFILE": "",
+  "SSH_USERNAME": "",
   "CAMA_BASE_PATH": "/var/lib/model/cama",
   "DROPBOX_ACCESS_TOKEN": ""
 }
