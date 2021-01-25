@@ -2,7 +2,9 @@ import pymongo
 import json
 import os
 from sshtunnel import SSHTunnelForwarder
+
 USE_SSH = False
+
 
 class DbConnect:
 
@@ -13,18 +15,19 @@ class DbConnect:
             self.CONFIG = json.load(f)
             f.close()
 
-        # SSH / Mongo Configuration #
-        self.MONGO_SERVER = SSHTunnelForwarder(
-            (self.CONFIG["MONGO_IP"], 22),
-            ssh_username=self.CONFIG["SSH_USERNAME"],
-            ssh_pkey=self.CONFIG["SSH_KEYFILE"],
-            remote_bind_address=('localhost', 27017)
-        )
+        self.MONGO_SERVER = None
         self.MONGO_CLIENT = None
 
     def connect_db(self):
         try:
             if USE_SSH:
+                # SSH / Mongo Configuration #
+                self.MONGO_SERVER = SSHTunnelForwarder(
+                    (self.CONFIG["MONGO_IP"], 22),
+                    ssh_username=self.CONFIG["SSH_USERNAME"],
+                    ssh_pkey=self.CONFIG["SSH_KEYFILE"],
+                    remote_bind_address=('localhost', 27017)
+                )
                 # open the SSH tunnel to the mongo server
                 self.MONGO_SERVER.start()
                 # open mongo connection
@@ -51,6 +54,3 @@ class DbConnect:
         except Exception as e:
             print('cannot disconnect')
             raise e
-
-
-

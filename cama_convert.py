@@ -119,7 +119,7 @@ class CamaConvert:
             command = "sudo cp -avr ${CAMADIR}/map/hamid ${CAMADIR}/map/hamid_copy".replace("{CAMADIR}", self.BASE_PATH)
             process = subprocess.Popen(command, shell=True)
             process.wait()
-            
+
         cell = self.coord_to_grid_cell(p_lat, p_lon) - 1  # must offset by 1; this is very sensitive in the raw binary
         # 1) we pull the number of indices from the river height file
         file_path = os.path.join(self.BASE_PATH, "map", "hamid", "rivhgt.bin")
