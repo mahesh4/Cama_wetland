@@ -412,7 +412,8 @@ class CamaConvert:
                 file.write(cama_config)
                 file.close()
         except IOError as e:
-            return "IOError:" + str(e)
+            raise "IOError:" + str(e)
+        print("Configured Cama")
         return "Success"
 
     def peak_flow(self, folder_name, p_lat=0.0, p_lon=0.0, floodpeak=10):
@@ -488,6 +489,7 @@ class CamaConvert:
             self.config_cama("pre", s_year, e_year)
             # Starting the execution of the model
             subprocess.Popen("sudo " + self.BASE_PATH + "/gosh/hamid_pre.sh", shell=True)
+            print("Cama in execution")
         except Exception as e:
             self.handle_cama_exception(folder_name, )
             raise e
