@@ -412,6 +412,7 @@ class CamaConvert:
                 file.write(cama_config)
                 file.close()
         except IOError as e:
+            print("IOError:" + str(e))
             raise "IOError:" + str(e)
         print("Configured Cama")
         return "Success"
