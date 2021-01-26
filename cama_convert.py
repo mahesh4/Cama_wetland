@@ -116,7 +116,7 @@ class CamaConvert:
 
         # Check if map/hamid folder had been duplicated
         if not os.path.exists(os.path.join(self.BASE_PATH, "map", "hamid_copy")):
-            command = "sudo cp -avr ${CAMADIR}/map/hamid ${CAMADIR}/map/hamid_copy".replace("{CAMADIR}", self.BASE_PATH)
+            command = "sudo cp -avr ${CAMADIR}/map/hamid ${CAMADIR}/map/hamid_copy".replace("${CAMADIR}", self.BASE_PATH)
             print(command)
             process = subprocess.Popen(command, shell=True)
             process.wait()
@@ -499,7 +499,7 @@ class CamaConvert:
 
     def reset_map_directory(self):
         command = "sudo rm -r ${CAMADIR}/map/hamid; sudo cp -avr ${CAMADIR}/map/hamid_copy ${CAMADIR}/map/hamid; " \
-                  "sudo chmod -R 705 ${CAMADIR}/map/hamid".replace("{CAMADIR}", self.BASE_PATH)
+                  "sudo chmod -R 705 ${CAMADIR}/map/hamid".replace("${CAMADIR}", self.BASE_PATH)
         process = subprocess.Popen(command, shell=True)
         process.wait()
         return
@@ -707,4 +707,5 @@ if __name__ == '__main__':
     db.connect_db()
     mongo_client = db.get_connection()
     obj = CamaConvert(mongo_client)
-    obj.update_manning(32.164, -97.472, 0.0019, 0.0019, 0.0065, 1, 1)
+    # obj.update_manning(32.164, -97.472, 0.0019, 0.0019, 0.0065, 1, 1)
+    obj.reset_map_directory()
