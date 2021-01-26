@@ -10,7 +10,7 @@ import random
 import numpy
 # Custom import
 from dropbox_connect import DropBox
-
+import db_connect
 
 class CamaConvert:
     def __init__(self, mongo_client):
@@ -117,6 +117,7 @@ class CamaConvert:
         # Check if map/hamid folder had been duplicated
         if not os.path.exists(os.path.join(self.BASE_PATH, "map", "hamid_copy")):
             command = "sudo cp -avr ${CAMADIR}/map/hamid ${CAMADIR}/map/hamid_copy".replace("{CAMADIR}", self.BASE_PATH)
+            print(command)
             process = subprocess.Popen(command, shell=True)
             process.wait()
 
@@ -699,3 +700,11 @@ class CamaConvert:
             # Deleting the temp folder
             self.clean_up()
             raise e
+
+
+if __name__ == '__main__':
+    db = db_connect.DbConnect()
+    db.connect_db()
+    mongo_client = db.get_connection()
+    obj = CamaConvert(mongo_client)
+    obj.update_manning(32.164, -97.472, 0.0019, 0.0019, 0.0065, 1, 1)
