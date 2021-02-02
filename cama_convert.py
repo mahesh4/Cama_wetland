@@ -412,6 +412,8 @@ class CamaConvert:
             with open(file_path, "w") as file:
                 file.write(cama_config)
                 file.close()
+            # Giving the execute permission to the file
+            os.chmod(file_path, 0o777)
         except IOError as e:
             print("IOError:" + str(e))
             raise "IOError:" + str(e)
@@ -477,9 +479,9 @@ class CamaConvert:
 
             metadata = {"start_year": s_year, "end_year": e_year}
             new_record = dict({"model": "preflow", "status": "running", "folder_name": folder_name, "metadata": metadata})
-            # Use record_id as the folder_name if its None
-            record_id = folder_collection.insert_one(new_record).inserted_id
             # Inserting the record in MongoDB
+            record_id = folder_collection.insert_one(new_record).inserted_id
+            # Use record_id as the folder_name if its None
             if folder_name is None:
                 folder_name = str(record_id)
 
@@ -520,7 +522,6 @@ class CamaConvert:
             running_record = folder_collection.find_one({"status": "running"})
             if running_record is not None:
                 return "Model is in execution, please retry after sometime"
-
             # Check if the folder_name is unique
             if folder_name is not None:
                 record = folder_collection.find_one({"folder_name": folder_name})
@@ -531,9 +532,8 @@ class CamaConvert:
                         "p_fld_new": p_fld_new, "size_wetland": size_wetland, "start_year": start_year, "end_year": end_year}
             # Inserting the record in MongoDB
             new_record = dict({"model": "postflow", "status": "running", "metadata": metadata})
-
-            record_id = folder_collection.insert_one(new_record).inserted_id
             # Use record_id as the folder_name if its None
+            record_id = folder_collection.insert_one(new_record).inserted_id
             if folder_name is None:
                 folder_name = str(record_id)
 
